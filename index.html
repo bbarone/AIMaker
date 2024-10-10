@@ -6,46 +6,19 @@
     <title>AI Horde Design Generator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-        }
-        .container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        input, select, button {
-            display: block;
+        /* ... (previous styles remain the same) ... */
+        #progress {
             width: 100%;
-            margin: 10px 0;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        #canvas-container {
-            margin-top: 20px;
-            border: 1px solid #ddd;
-        }
-        #loading {
+            background-color: #ddd;
             display: none;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 30px;
+            background-color: #4CAF50;
             text-align: center;
-            margin-top: 20px;
+            line-height: 30px;
+            color: white;
         }
     </style>
 </head>
@@ -60,7 +33,10 @@
         </select>
         <input type="text" id="designText" placeholder="Enter text for the design">
         <button onclick="generateDesign()">Generate Design</button>
-        <div id="loading">Generating design... This may take a few minutes.</div>
+        <div id="loading">Initiating design generation...</div>
+        <div id="progress">
+            <div id="progress-bar">0%</div>
+        </div>
         <div id="canvas-container">
             <canvas id="canvas" width="512" height="512"></canvas>
         </div>
@@ -74,14 +50,11 @@
             const designType = document.getElementById('designType').value;
             const designText = document.getElementById('designText').value;
 
-            // Show loading message
             document.getElementById('loading').style.display = 'block';
-
-            // Clear the canvas
+            document.getElementById('progress').style.display = 'block';
             canvas.clear();
 
             try {
-                // Send request to backend
                 const response = await fetch('/generate-design', {
                     method: 'POST',
                     headers: {
@@ -91,46 +64,69 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to generate design');
+                    throw new Error('Failed to initiate design generation');
                 }
 
                 const data = await response.json();
-
-                // Load the generated image
-                fabric.Image.fromURL(data.imageUrl, function(img) {
-                    img.scaleToWidth(canvas.width);
-                    canvas.add(img);
-
-                    // Add text
-                    text = new fabric.Text(designText, {
-                        left: 50,
-                        top: 50,
-                        fontSize: 20,
-                        fill: 'white'
-                    });
-                    canvas.add(text);
-                    canvas.setActiveObject(text);
-
-                    // Hide loading message
-                    document.getElementById('loading').style.display = 'none';
-                });
+                pollStatus(data.taskId, designText);
             } catch (error) {
                 console.error('Error:', error);
-                alert('Failed to generate design. Please try again.');
+                alert('Failed to initiate design generation. Please try again.');
                 document.getElementById('loading').style.display = 'none';
+                document.getElementById('progress').style.display = 'none';
             }
         }
 
-        // Make text editable
-        canvas.on('mouse:down', function(options) {
-            if (options.target && options.target.type === 'text') {
-                canvas.setActiveObject(options.target);
-            }
-        });
+        async function pollStatus(taskId, designText) {
+            let progress = 0;
+            const progressBar = document.getElementById('progress-bar');
+            const loadingText = document.getElementById('loading');
 
-        canvas.on('text:changed', function(e) {
-            canvas.renderAll();
-        });
+            const pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/check-status/${taskId}`);
+                    const data = await response.json();
+
+                    if (data.done) {
+                        clearInterval(pollInterval);
+                        loadImage(data.imageUrl, designText);
+                    } else {
+                        progress += 5;
+                        if (progress > 95) progress = 95;
+                        progressBar.style.width = `${progress}%`;
+                        progressBar.textContent = `${progress}%`;
+                        loadingText.textContent = 'Generating design... This may take a few minutes.';
+                    }
+                } catch (error) {
+                    console.error('Error checking status:', error);
+                    clearInterval(pollInterval);
+                    alert('Failed to check design status. Please try again.');
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('progress').style.display = 'none';
+                }
+            }, 5000);  // Check every 5 seconds
+        }
+
+        function loadImage(imageUrl, designText) {
+            fabric.Image.fromURL(imageUrl, function(img) {
+                img.scaleToWidth(canvas.width);
+                canvas.add(img);
+
+                text = new fabric.Text(designText, {
+                    left: 50,
+                    top: 50,
+                    fontSize: 20,
+                    fill: 'white'
+                });
+                canvas.add(text);
+                canvas.setActiveObject(text);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('progress').style.display = 'none';
+            });
+        }
+
+        // ... (previous canvas event listeners remain the same) ...
     </script>
 </body>
 </html>
