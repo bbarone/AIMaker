@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Horde Design Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        input, select, button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #canvas-container {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+        }
+        #loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Horde Design Generator</h1>
+        <select id="designType">
+            <option value="poster">Poster</option>
+            <option value="logo">Logo</option>
+            <option value="greeting card">Greeting Card</option>
+            <option value="book cover">Book Cover</option>
+        </select>
+        <input type="text" id="designText" placeholder="Enter text for the design">
+        <button onclick="generateDesign()">Generate Design</button>
+        <div id="loading">Generating design... This may take a few minutes.</div>
+        <div id="canvas-container">
+            <canvas id="canvas" width="512" height="512"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let canvas = new fabric.Canvas('canvas');
+        let text;
+
+        async function generateDesign() {
+            const designType = document.getElementById('designType').value;
+            const designText = document.getElementById('designText').value;
+
+            // Show loading message
+            document.getElementById('loading').style.display = 'block';
+
+            // Clear the canvas
+            canvas.clear();
+
+            try {
+                // Send request to backend
+                const response = await fetch('/generate-design', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ designType, designText }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to generate design');
+                }
+
+                const data = await response.json();
+
+                // Load the generated image
+                fabric.Image.fromURL(data.imageUrl, function(img) {
+                    img.scaleToWidth(canvas.width);
+                    canvas.add(img);
+
+                    // Add text
+                    text = new fabric.Text(designText, {
+                        left: 50,
+                        top: 50,
+                        fontSize: 20,
+                        fill: 'white'
+                    });
+                    canvas.add(text);
+                    canvas.setActiveObject(text);
+
+                    // Hide loading message
+                    document.getElementById('loading').style.display = 'none';
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to generate design. Please try again.');
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // Make text editable
+        canvas.on('mouse:down', function(options) {
+            if (options.target && options.target.type === 'text') {
+                canvas.setActiveObject(options.target);
+            }
+        });
+
+        canvas.on('text:changed', function(e) {
+            canvas.renderAll();
+        });
+    </script>
+</body>
+</html>
