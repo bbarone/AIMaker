@@ -29,23 +29,29 @@ app.post('/generate-design', async (req, res) => {
 
     const { id: taskId } = generateResponse.data;
 
-    // Poll for the result
-    let imageUrl;
-    while (!imageUrl) {
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
-
-      const checkResponse = await axios.get(`${AI_HORDE_API_URL}/generate/check/${taskId}`);
-      
-      if (checkResponse.data.done) {
-        const getResponse = await axios.get(`${AI_HORDE_API_URL}/generate/status/${taskId}`);
-        imageUrl = getResponse.data.generations[0].img;
-      }
-    }
-
-    res.json({ imageUrl });
+    // Instead of waiting, send the task ID back to the client
+    res.json({ taskId });
   } catch (error) {
-    console.error('Error generating design:', error);
-    res.status(500).json({ error: 'Failed to generate design' });
+    console.error('Error initiating design generation:', error);
+    res.status(500).json({ error: 'Failed to initiate design generation' });
+  }
+});
+
+app.get('/check-status/:taskId', async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const checkResponse = await axios.get(`${AI_HORDE_API_URL}/generate/check/${taskId}`);
+    
+    if (checkResponse.data.done) {
+      const getResponse = await axios.get(`${AI_HORDE_API_URL}/generate/status/${taskId}`);
+      const imageUrl = getResponse.data.generations[0].img;
+      res.json({ done: true, imageUrl });
+    } else {
+      res.json({ done: false });
+    }
+  } catch (error) {
+    console.error('Error checking status:', error);
+    res.status(500).json({ error: 'Failed to check status' });
   }
 });
 
