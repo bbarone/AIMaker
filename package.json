@@ -1,0 +1,29 @@
+{
+  "name": "ai-horde-design-generator",
+  "version": "1.0.0",
+  "description": "A web application that generates designs using the AI Horde API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "ai",
+    "design",
+    "generator",
+    "ai-horde"
+  ],
+  "author": "Ben BN",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1",
+    "axios": "^0.21.1",
+    "dotenv": "^10.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.7"
+  },
+  "engines": {
+    "node": "14.x"
+  }
+}
